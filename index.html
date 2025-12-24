@@ -15,7 +15,7 @@
 </head>
 <body class="bg-slate-50">
     <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-xl relative overflow-x-hidden">
-        <!-- Content will be injected here by JavaScript -->
+        <!-- Content injected by JS -->
     </div>
 
     <script>
@@ -32,15 +32,16 @@
 
         const SYLLABUS = {
             "1A": [
-                { word: "阿姨", pinyin: "ā yí" },
-                { word: "公园", pinyin: "gōng yuán" },
-                { word: "跑步", pinyin: "pǎo bù" },
-                { word: "拍手", pinyin: "pāi shǒu" }
+                { word: "阿姨", pinyin: "ā yí" }, { word: "公园", pinyin: "gōng yuán" },
+                { word: "跑步", pinyin: "pǎo bù" }, { word: "拍手", pinyin: "pāi shǒu" }
             ],
             "3A": [
-                { word: "照顾", pinyin: "zhào gù" },
-                { word: "环境", pinyin: "huán jìng" },
+                { word: "照顾", pinyin: "zhào gù" }, { word: "环境", pinyin: "huán jìng" },
                 { word: "邻居", pinyin: "lín jū" }
+            ],
+            "6B": [
+                { word: "犹豫", pinyin: "yóu yù" }, { word: "坚持", pinyin: "jiān chí" },
+                { word: "贡献", pinyin: "gòng xiàn" }
             ]
         };
 
@@ -58,24 +59,34 @@
             window.speechSynthesis.speak(utterance);
         }
 
+        /**
+         * Robust Fisher-Yates Shuffle
+         * Fixed the repetition bug by ensuring correct index swapping
+         */
         function shuffle(array) {
             let arr = [...array];
             for (let i = arr.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[arr[j]]] = [arr[j], arr[i]]; // Simplified shuffle
+                // Swap elements at i and j
+                const temp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = temp;
             }
-            return arr.sort(() => Math.random() - 0.5); // Fast shuffle for web
+            return arr;
         }
 
         function startDictation(level, isCustom) {
             let source = isCustom ? state.customWords : (SYLLABUS[level] || []);
             if (source.length === 0) return;
 
+            // Generate session list based on mode
             state.sessionWords = state.isShuffle ? shuffle(source) : [...source];
             state.selectedLevel = isCustom ? "自定义" : level;
             state.currentWordIndex = 0;
             state.view = 'dictation';
             render();
+            
+            // Auto-speak first word
             setTimeout(() => speak(state.sessionWords[0].word), 500);
         }
 
@@ -92,6 +103,17 @@
             reader.readAsText(file);
         }
 
+        function nextWord() {
+            if (state.currentWordIndex < state.sessionWords.length - 1) {
+                state.currentWordIndex++;
+                render();
+                speak(state.sessionWords[state.currentWordIndex].word);
+            } else {
+                state.view = 'summary';
+                render();
+            }
+        }
+
         // --- View Templates ---
         function render() {
             const container = document.getElementById('app');
@@ -99,15 +121,15 @@
 
             if (state.view === 'home') {
                 html = `
-                    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center p-6">
+                    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 animate-in fade-in">
                         <div class="w-24 h-24 bg-red-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-red-200">
                             <i data-lucide="book" class="text-white w-12 h-12"></i>
                         </div>
                         <h1 class="text-4xl font-black text-slate-800 mb-2">欢乐伙伴</h1>
                         <p class="text-xl text-slate-500 mb-10 font-medium">听写大王</p>
                         <div class="w-full max-w-xs space-y-4">
-                            <button onclick="state.view='level-select'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center space-x-2">同步教材</button>
-                            <button onclick="state.view='custom-upload'; render()" class="w-full bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center space-x-2">输入/上传</button>
+                            <button onclick="state.view='level-select'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg">同步教材</button>
+                            <button onclick="state.view='custom-upload'; render()" class="w-full bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg">输入/上传</button>
                         </div>
                     </div>
                 `;
@@ -117,7 +139,7 @@
                     <div class="p-6 pb-24 flex flex-col min-h-screen">
                         <div class="flex items-center mb-8">
                             <button onclick="state.view='home'; render()" class="p-2 mr-4 bg-slate-100 rounded-xl"><i data-lucide="chevron-left"></i></button>
-                            <h2 class="text-2xl font-bold text-slate-800">${isCustom ? '自定义词语' : '同步教材'}</h2>
+                            <h2 class="text-2xl font-bold text-slate-800">${isCustom ? '自定义词语' : '教材同步'}</h2>
                         </div>
                         
                         <div class="bg-slate-100 p-1.5 rounded-2xl flex items-center mb-6">
@@ -126,14 +148,14 @@
                         </div>
 
                         ${isCustom ? `
-                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-6 text-sm text-blue-600">上传 .txt 或 .csv 文件，每行一个词。</div>
+                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-6 text-sm text-blue-600">上传 .txt 或 .csv 文件，系统将自动提取词语。</div>
                             <input type="file" id="filePicker" onchange="handleFileUpload(event)" class="hidden" accept=".txt,.csv">
-                            <button onclick="document.getElementById('filePicker').click()" class="w-full border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center text-slate-500 mb-6">
-                                <i data-lucide="upload" class="mb-2"></i><span>点击上传文件</span>
+                            <button onclick="document.getElementById('filePicker').click()" class="w-full border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center text-slate-500 mb-6 hover:bg-slate-50">
+                                <i data-lucide="upload" class="mb-2"></i><span>上传词语列表</span>
                             </button>
                             ${state.customWords.length > 0 ? `
                                 <div class="flex-1 overflow-hidden flex flex-col">
-                                    <div class="flex flex-wrap gap-2 mb-4">
+                                    <div class="flex flex-wrap gap-2 mb-6 overflow-y-auto max-h-[30vh]">
                                         ${state.customWords.map(w => `<span class="bg-white px-3 py-1 border rounded-lg font-bold">${w.word}</span>`).join('')}
                                     </div>
                                     <button onclick="startDictation(null, true)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl mt-auto">开始听写</button>
@@ -156,22 +178,25 @@
                         <div class="p-4 bg-white flex justify-between items-center shadow-sm">
                             <button onclick="state.view='home'; render()"><i data-lucide="x-circle" class="text-slate-300"></i></button>
                             <div class="text-center">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${state.selectedLevel}</p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${state.selectedLevel} ${state.isShuffle ? '(随机)' : '(顺序)'}</p>
                                 <p class="text-sm font-black">${state.currentWordIndex + 1} / ${state.sessionWords.length}</p>
                             </div>
                             <div class="w-6"></div>
                         </div>
-                        <div class="w-full h-1.5 bg-slate-100"><div class="h-full bg-red-500 transition-all" style="width: ${progress}%"></div></div>
+                        <div class="w-full h-1.5 bg-slate-100"><div class="h-full bg-red-500 transition-all duration-300" style="width: ${progress}%"></div></div>
                         <div class="flex-1 flex flex-col items-center justify-center p-6 space-y-12">
-                            <div onclick="speak('${word.word}')" class="w-40 h-40 rounded-full bg-red-100 flex items-center justify-center cursor-pointer shadow-inner ${state.isSpeaking ? 'ring-8 ring-red-50' : ''}">
+                            <div onclick="speak('${word.word}')" class="w-40 h-40 rounded-full bg-red-100 flex items-center justify-center cursor-pointer shadow-inner transition-all active:scale-95 ${state.isSpeaking ? 'ring-8 ring-red-50' : ''}">
                                 <i data-lucide="volume-2" class="text-red-500 w-16 h-16"></i>
                             </div>
-                            <button onclick="speak('${word.word}')" class="px-8 py-3 bg-white border rounded-full shadow-sm flex items-center space-x-2 font-bold text-slate-600">
-                                <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>重读</span>
-                            </button>
+                            <div class="space-y-4 text-center">
+                                <button onclick="speak('${word.word}')" class="px-8 py-3 bg-white border rounded-full shadow-sm flex items-center space-x-2 font-bold text-slate-600 hover:bg-slate-50 mx-auto">
+                                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>重读</span>
+                                </button>
+                                <p class="text-slate-400 text-sm font-medium">请在纸上默写词语</p>
+                            </div>
                         </div>
                         <div class="p-6 bg-white border-t">
-                            <button onclick="nextWord()" class="w-full bg-slate-800 text-white font-bold py-5 rounded-2xl text-lg">写好了，下一个</button>
+                            <button onclick="nextWord()" class="w-full bg-slate-800 text-white font-bold py-5 rounded-2xl text-lg hover:bg-slate-900 transition-colors">写好了，下一个</button>
                         </div>
                     </div>
                 `;
@@ -179,22 +204,22 @@
                 html = `
                     <div class="p-6 flex flex-col items-center min-h-screen bg-white">
                         <div class="mt-12 mb-8 text-center">
-                            <div class="w-32 h-32 rounded-full border-8 border-green-500 flex items-center justify-center mb-6 mx-auto">
+                            <div class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6 mx-auto">
                                 <i data-lucide="check-circle-2" class="text-green-500 w-12 h-12"></i>
                             </div>
                             <h2 class="text-3xl font-black text-slate-800">听写完成!</h2>
-                            <p class="text-slate-400">请核对纸面答案</p>
+                            <p class="text-slate-400 mt-2">现在请核对纸上的词语</p>
                         </div>
                         <div class="w-full space-y-3 mb-10 overflow-y-auto max-h-[40vh] pr-2 custom-scrollbar">
                             ${state.sessionWords.map((item, idx) => `
                                 <div class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border">
                                     <span class="font-black text-slate-800 text-2xl">${item.word}</span>
-                                    <span class="text-slate-300 font-black">#${idx + 1}</span>
+                                    <span class="text-slate-300 font-bold">#${idx + 1}</span>
                                 </div>
                             `).join('')}
                         </div>
                         <div class="w-full space-y-4 mt-auto">
-                            <button onclick="startDictation('${state.selectedLevel}', ${state.selectedLevel === '自定义'})" class="w-full bg-red-500 text-white font-bold py-5 rounded-2xl">再练一次</button>
+                            <button onclick="startDictation('${state.selectedLevel}', ${state.selectedLevel === '自定义'})" class="w-full bg-red-500 text-white font-bold py-5 rounded-2xl shadow-lg">再练一次</button>
                             <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">返回主页</button>
                         </div>
                     </div>
@@ -205,18 +230,7 @@
             lucide.createIcons();
         }
 
-        function nextWord() {
-            if (state.currentWordIndex < state.sessionWords.length - 1) {
-                state.currentWordIndex++;
-                render();
-                speak(state.sessionWords[state.currentWordIndex].word);
-            } else {
-                state.view = 'summary';
-                render();
-            }
-        }
-
-        // Initial render
+        // Initialize
         window.onload = render;
     </script>
 </body>
