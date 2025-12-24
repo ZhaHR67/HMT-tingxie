@@ -219,7 +219,7 @@
                 const word = state.sessionWords[state.currentWordIndex];
                 const progress = ((state.currentWordIndex + 1) / state.sessionWords.length) * 100;
                 const isLastWord = state.currentWordIndex === state.sessionWords.length - 1;
-                const buttonText = isLastWord ? "写完了" : "写好了，下一个";
+                const buttonText = isLastWord ? "写完了，看答案" : "写好了，下一个";
                 
                 html = `
                     <div class="flex flex-col min-h-screen bg-slate-50">
