@@ -33,22 +33,22 @@
         // --- 新的高级华文听写内容 ---
         const SYLLABUS = {
             "听写（一）今天天气真好": [
-                { word: "太阳", pinyin: "tài yáng" },
-                { word: "云朵", pinyin: "yún duǒ" },
-                { word: "公园", pinyin: "gōng yuán" },
-                { word: "本来应该，从从容容游刃有余，现在是匆匆忙忙连滚带爬，睜眼说瞎话，你在哽咽什么啦！你在哭什么哭，没出息", pinyin: "sàn bù" }
+                { word: "太阳" },
+                { word: "云朵" },
+                { word: "公园" },
+                { word: "散步" }
             ],
             "听写（二）今天是圣诞节": [
-                { word: "礼物", pinyin: "lǐ wù" },
-                { word: "快乐", pinyin: "kuài lè" },
-                { word: "朋友", pinyin: "péng yǒu" },
-                { word: "庆祝", pinyin: "qìng zhù" }
+                { word: "礼物" },
+                { word: "快乐" },
+                { word: "朋友" },
+                { word: "庆祝" }
             ],
             "听写（三）我们在学校": [
-                { word: "老师", pinyin: "lǎo shī" },
-                { word: "同学", pinyin: "tóng xué" },
-                { word: "学习", pinyin: "xué xí" },
-                { word: "认真", pinyin: "rèn zhēn" }
+                { word: "老师" },
+                { word: "同学" },
+                { word: "学习" },
+                { word: "认真" }
             ]
         };
 
@@ -103,7 +103,7 @@
             reader.onload = (event) => {
                 const text = event.target.result;
                 const words = text.split(/[\n,]+/).map(w => w.trim()).filter(w => w !== '');
-                state.customWords = words.map(w => ({ word: w, pinyin: "" }));
+                state.customWords = words.map(w => ({ word: w }));
                 render();
             };
             reader.readAsText(file);
