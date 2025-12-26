@@ -11,6 +11,17 @@
         body { font-family: 'Noto Sans SC', sans-serif; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .logo-container {
+            width: 120px;
+            height: 120px;
+            overflow: hidden;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -30,7 +41,7 @@
             isSpeaking: false
         };
 
-        // --- 新的高级华文听写内容 ---
+        // --- 听写内容 ---
         const SYLLABUS = {
             "听写（一）今天天气真好": [
                 { word: "太阳" },
@@ -128,8 +139,8 @@
             if (state.view === 'home') {
                 html = `
                     <div class="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 animate-in fade-in">
-                        <div class="w-24 h-24 bg-red-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-red-200">
-                            <i data-lucide="book-open-check" class="text-white w-12 h-12"></i>
+                        <div class="logo-container mb-8">
+                            <img src="vpslogo.jpeg" alt="Logo" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/120/EF4444/FFFFFF?text=VPS'">
                         </div>
                         <h1 class="text-4xl font-black text-slate-800 mb-2">高级华文</h1>
                         <p class="text-xl text-slate-500 mb-10 font-medium">听写大王</p>
@@ -188,7 +199,6 @@
                             <h3 class="text-3xl font-black text-slate-800 leading-tight">${state.selectedLevel}</h3>
                         </div>
 
-                        <!-- Dictation Order Toggle Section -->
                         <div class="bg-slate-100 p-1.5 rounded-2xl flex items-center mb-6">
                             <button onclick="state.isShuffle=false; render()" class="flex-1 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${!state.isShuffle ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}">
                                 <i data-lucide="list-ordered" class="w-4 h-4"></i>
