@@ -87,13 +87,39 @@
         // Mapping for lesson dates
         const LESSON_METADATA = {
             "听写（一）到户外去": { date: "1月20日" },
-            "听写（二）今天是圣诞节": { date: "N/A" },
-            "听写（三）我们在学校": { date: "N/A" }
+            "听写（二）": { date: "N/A" },
+            "听写（三）": { date: "N/A" }
         };
 
         const LESSONS = Object.keys(SYLLABUS);
 
         // --- Core Functions ---
+        
+        // Helper to calculate days remaining
+        function getDaysLeft(dateStr) {
+            if (!dateStr || dateStr === "N/A") return null;
+            
+            // Extract month and day from string like "1月20日"
+            const match = dateStr.match(/(\d+)月(\d+)日/);
+            if (!match) return null;
+            
+            const month = parseInt(match[1]) - 1; // 0-indexed
+            const day = parseInt(match[2]);
+            
+            const now = new Date();
+            const year = now.getFullYear();
+            const target = new Date(year, month, day);
+            
+            // Reset hours for accurate daily calculation
+            now.setHours(0, 0, 0, 0);
+            target.setHours(0, 0, 0, 0);
+            
+            const diffTime = target - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays;
+        }
+
         function speak(text) {
             if (!text) return;
             window.speechSynthesis.cancel();
@@ -255,14 +281,34 @@
                             <div class="flex flex-col space-y-4">
                                 ${LESSONS.map(lesson => {
                                     const meta = LESSON_METADATA[lesson] || { date: '-' };
+                                    const daysLeft = getDaysLeft(meta.date);
+                                    
+                                    let countdownHtml = "";
+                                    if (daysLeft !== null) {
+                                        if (daysLeft > 0) {
+                                            countdownHtml = `<span class="ml-2 text-blue-500 font-bold">（剩 ${daysLeft} 天）</span>`;
+                                        } else if (daysLeft === 0) {
+                                            countdownHtml = `<span class="ml-2 text-red-500 font-bold animate-pulse">（今天！）</span>`;
+                                        } else {
+                                            countdownHtml = `<span class="ml-2 text-slate-400">（已截止）</span>`;
+                                        }
+                                    }
+
                                     return `
                                     <button onclick="showPreview('${lesson}')" class="w-full p-5 text-left rounded-2xl border-2 border-red-100 bg-white hover:border-red-500 transition-all shadow-sm group">
                                         <div class="flex justify-between items-start mb-1">
                                             <div class="text-lg font-black text-red-600 leading-tight group-hover:text-red-700">${lesson}</div>
-                                            <div class="text-xs font-bold px-2 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100">${meta.date}</div>
+                                            <div class="text-right flex flex-col items-end">
+                                                <div class="text-[10px] font-black px-2 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100">${meta.date}</div>
+                                            </div>
                                         </div>
-                                        <div class="text-slate-400 text-sm">
-                                            ${SYLLABUS[lesson].length - 1} 个词语 · 1 个默写
+                                        <div class="flex justify-between items-center mt-1">
+                                            <div class="text-slate-400 text-xs">
+                                                ${SYLLABUS[lesson].length - 1} 个词语 · 1 个默写
+                                            </div>
+                                            <div class="text-[11px] font-bold">
+                                                ${countdownHtml}
+                                            </div>
                                         </div>
                                     </button>
                                     `;
@@ -410,7 +456,7 @@
 
                         <div class="p-6 pt-0 mt-auto flex flex-col space-y-3">
                             <button onclick="state.view='preview'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-red-600">再练一次</button>
-                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200">返回主页</button>
+                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200">返回주页</button>
                         </div>
                     </div>
                 `;
