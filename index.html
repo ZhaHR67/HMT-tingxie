@@ -41,7 +41,7 @@
             isSpeaking: false
         };
 
-        // --- 听写内容 ---
+        // --- 听写内容 (Syllabus) ---
         const SYLLABUS = {
             "听写（一）到户外去": [
                 { word: "野外露营" },
@@ -79,7 +79,15 @@
         function speak(text) {
             if (!text) return;
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Process text to read punctuation marks aloud AND trigger pauses AFTER they are read.
+            // Adding extra punctuation marks (， or 。) after the word "逗号" or "句号" 
+            // forces the TTS engine to pause before continuing the rest of the sentence.
+            const processedText = text
+                .replace(/，/g, ' 逗号，，')
+                .replace(/。/g, ' 句号。。');
+            
+            const utterance = new SpeechSynthesisUtterance(processedText);
             utterance.lang = 'zh-CN';
             utterance.rate = 0.8;
             utterance.onstart = () => { state.isSpeaking = true; render(); };
@@ -153,7 +161,7 @@
                             <img src="vpslogo.jpeg" alt="Logo" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/120/EF4444/FFFFFF?text=VPS'">
                         </div>
                         <h1 class="text-4xl font-black text-slate-800 mb-2">高级华文</h1>
-                        <p class="text-xl text-slate-500 mb-10 font-medium">听写大王</p>
+                        <p class="text-xl text-slate-500 mb-10 font-medium">五年级听写大王</p>
                         <div class="w-full max-w-xs space-y-4">
                             <button onclick="state.view='level-select'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-red-600 transition-colors">高级华文听写</button>
                         </div>
@@ -186,7 +194,7 @@
                             <div class="flex flex-col space-y-4">
                                 ${LESSONS.map(lesson => `
                                     <button onclick="showPreview('${lesson}')" class="w-full p-6 text-left rounded-2xl border-2 border-red-100 bg-white hover:border-red-500 transition-all shadow-sm">
-                                        <div class="text-lg font-black text-red-600">${lesson}</div>
+                                        <div class="text-lg font-black text-red-600 leading-tight">${lesson}</div>
                                         <div class="text-slate-400 text-sm mt-1">${SYLLABUS[lesson].length} 个词语</div>
                                     </button>
                                 `).join('')}
@@ -220,9 +228,9 @@
                         </div>
 
                         <div class="flex-1 bg-white rounded-3xl border border-slate-100 p-6 shadow-inner mb-6 overflow-y-auto custom-scrollbar">
-                            <div class="flex flex-wrap gap-3">
+                            <div class="flex flex-col space-y-3">
                                 ${words.map(w => `
-                                    <div class="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 text-xl font-bold text-slate-700">
+                                    <div class="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 text-lg font-bold text-slate-700 leading-relaxed text-left">
                                         ${w.word}
                                     </div>
                                 `).join('')}
@@ -259,7 +267,7 @@
                                 <button onclick="speak('${word.word}')" class="px-8 py-3 bg-white border rounded-full shadow-sm flex items-center space-x-2 font-bold text-slate-600 hover:bg-slate-50 mx-auto">
                                     <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>重读</span>
                                 </button>
-                                <p class="text-slate-400 text-sm font-medium">请在纸上默写词语</p>
+                                <p class="text-slate-400 text-sm font-medium">请在纸上默写词语或句子</p>
                             </div>
                         </div>
                         <div class="p-6 bg-white border-t">
@@ -279,17 +287,17 @@
                             <h2 class="text-3xl font-black text-slate-800">听写完成!</h2>
                             <p class="text-slate-400 mt-2">请对照纸上作业核对答案</p>
                         </div>
-                        <div class="w-full space-y-3 mb-10 overflow-y-auto max-h-[40vh] pr-2 custom-scrollbar">
+                        <div class="w-full space-y-3 mb-10 overflow-y-auto max-h-[45vh] pr-2 custom-scrollbar">
                             ${state.sessionWords.map((item, idx) => `
                                 <div class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span class="font-black text-slate-800 text-2xl">${item.word}</span>
+                                    <span class="font-bold text-slate-800 text-lg leading-relaxed text-left flex-1 mr-4">${item.word}</span>
                                     <span class="text-slate-300 font-bold">#${idx + 1}</span>
                                 </div>
                             `).join('')}
                         </div>
-                        <div class="w-full space-y-4 mt-auto">
-                            <button onclick="state.view='preview'; render()" class="w-full bg-red-500 text-white font-bold py-5 rounded-2xl shadow-lg">再练一次</button>
-                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl">返回主页</button>
+                        <div class="w-full space-y-4 mt-auto pb-6">
+                            <button onclick="state.view='preview'; render()" class="w-full bg-red-500 text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-red-600">再练一次</button>
+                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl hover:bg-slate-200">返回主页</button>
                         </div>
                     </div>
                 `;
