@@ -2,13 +2,23 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>高级华文听写 - 五年级</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
-        body { font-family: 'Noto Sans SC', sans-serif; }
+        body { 
+            font-family: 'Noto Sans SC', sans-serif; 
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+        }
+        /* Use dynamic viewport height for mobile browsers */
+        .app-height {
+            height: 100vh;
+            height: 100dvh;
+        }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .logo-container {
@@ -24,8 +34,8 @@
         }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-xl relative overflow-x-hidden">
+<body>
+    <div id="app" class="max-w-md w-full mx-auto app-height bg-white shadow-xl relative overflow-hidden flex flex-col">
         <!-- Content injected by JS -->
     </div>
 
@@ -57,20 +67,28 @@
                 { word: "一顿晚餐" },
                 { word: "感到痛苦" },
                 { word: "弟弟不小心踩到香蕉皮，摔得四脚朝天。" },
-                { word: "比赛虽然看起来简单，但要做到齐心协力，互相配合，还真不容易啊！" }
+                { word: "比赛虽然看起来简单，但要做到齐心协力，互相配合，还真不容易啊！" },
+                { word: "我打开饭盒，不管三七二十一，狼吞虎咽地吃了起来，不一会儿，就把饭菜都吃完了。" }
             ],
-            "听写（二）今天是圣诞节": [
-                { word: "礼物" },
-                { word: "快乐" },
-                { word: "朋友" },
-                { word: "庆祝" }
+            "听写（二）": [
+                { word: "N/A" },
+                { word: "N/A" },
+                { word: "N/A" },
+                { word: "N/A" }
             ],
-            "听写（三）我们在学校": [
-                { word: "老师" },
-                { word: "同学" },
-                { word: "学习" },
-                { word: "认真" }
+            "听写（三）": [
+                { word: "N/A" },
+                { word: "N/A" },
+                { word: "N/A" },
+                { word: "N/A" }
             ]
+        };
+
+        // Mapping for lesson dates
+        const LESSON_METADATA = {
+            "听写（一）到户外去": { date: "1月20日" },
+            "听写（二）今天是圣诞节": { date: "N/A" },
+            "听写（三）我们在学校": { date: "N/A" }
         };
 
         const LESSONS = Object.keys(SYLLABUS);
@@ -81,8 +99,6 @@
             window.speechSynthesis.cancel();
             
             // Process text to read punctuation marks aloud AND trigger pauses AFTER they are read.
-            // Adding extra punctuation marks (， or 。) after the word "逗号" or "句号" 
-            // forces the TTS engine to pause before continuing the rest of the sentence.
             const processedText = text
                 .replace(/，/g, ' 逗号，，')
                 .replace(/。/g, ' 句号。。');
@@ -93,6 +109,15 @@
             utterance.onstart = () => { state.isSpeaking = true; render(); };
             utterance.onend = () => { state.isSpeaking = false; render(); };
             window.speechSynthesis.speak(utterance);
+        }
+
+        // Specifically for recitation hints
+        function speakRecitationHint() {
+            const word = state.sessionWords[state.currentWordIndex];
+            if (!word) return;
+            // Read only the first 3 characters as a hint
+            const hint = word.word.substring(0, 3);
+            speak(hint + "...");
         }
 
         function shuffle(array) {
@@ -117,12 +142,42 @@
             let source = isCustom ? state.customWords : (SYLLABUS[state.selectedLevel] || []);
             if (source.length === 0) return;
 
-            state.sessionWords = state.isShuffle ? shuffle(source) : [...source];
+            let finalWords = [];
+            if (state.isShuffle) {
+                if (!isCustom && source.length > 1) {
+                    // 1. Identify Recitation (last item)
+                    const recitationPart = source.slice(-1);
+                    const dictationPart = source.slice(0, -1);
+                    
+                    // 2. Separate dictationPart into Words and Sentences
+                    const wordsPart = dictationPart.filter(item => 
+                        item.word.length <= 7 && !item.word.includes('，') && !item.word.includes('。')
+                    );
+                    const sentencesPart = dictationPart.filter(item => 
+                        item.word.length > 7 || item.word.includes('，') || item.word.includes('。')
+                    );
+                    
+                    // 3. Combine: Shuffled Words + Shuffled Sentences + Recitation
+                    finalWords = [...shuffle(wordsPart), ...shuffle(sentencesPart), ...recitationPart];
+                } else {
+                    finalWords = shuffle(source);
+                }
+            } else {
+                finalWords = [...source];
+            }
+
+            state.sessionWords = finalWords;
             state.currentWordIndex = 0;
             state.view = 'dictation';
             render();
             
-            setTimeout(() => speak(state.sessionWords[0].word), 500);
+            // Check if first word is the recitation item
+            const isLastWord = state.currentWordIndex === state.sessionWords.length - 1;
+            if (isLastWord && state.selectedLevel !== "自定义") {
+                setTimeout(() => speakRecitationHint(), 500);
+            } else {
+                setTimeout(() => speak(state.sessionWords[0].word), 500);
+            }
         }
 
         function handleFileUpload(e) {
@@ -142,7 +197,13 @@
             if (state.currentWordIndex < state.sessionWords.length - 1) {
                 state.currentWordIndex++;
                 render();
-                speak(state.sessionWords[state.currentWordIndex].word);
+                
+                const isLastWord = state.currentWordIndex === state.sessionWords.length - 1;
+                if (isLastWord && state.selectedLevel !== "自定义") {
+                    speakRecitationHint();
+                } else {
+                    speak(state.sessionWords[state.currentWordIndex].word);
+                }
             } else {
                 state.view = 'summary';
                 render();
@@ -156,12 +217,11 @@
 
             if (state.view === 'home') {
                 html = `
-                    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center p-6 animate-in fade-in">
+                    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 animate-in fade-in">
                         <div class="logo-container mb-8">
                             <img src="vpslogo.jpeg" alt="Logo" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/120/EF4444/FFFFFF?text=VPS'">
                         </div>
-                        <h1 class="text-4xl font-black text-slate-800 mb-2">高级华文</h1>
-                        <p class="text-xl text-slate-500 mb-10 font-medium">五年级听写大王</p>
+                        <h1 class="text-3xl md:text-4xl font-black text-slate-800 mb-10">高级华文 - 五年级听写</h1>
                         <div class="w-full max-w-xs space-y-4">
                             <button onclick="state.view='level-select'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-red-600 transition-colors">高级华文听写</button>
                         </div>
@@ -170,12 +230,15 @@
             } else if (state.view === 'level-select' || state.view === 'custom-upload') {
                 const isCustom = state.view === 'custom-upload';
                 html = `
-                    <div class="p-6 pb-24 flex flex-col min-h-screen">
-                        <div class="flex items-center mb-8">
-                            <button onclick="state.view='home'; render()" class="p-2 mr-4 bg-slate-100 rounded-xl hover:bg-slate-200"><i data-lucide="chevron-left"></i></button>
-                            <h2 class="text-2xl font-bold text-slate-800">${isCustom ? '自定义词语' : '选择听写内容'}</h2>
+                    <div class="flex flex-col h-full animate-in slide-in-from-right">
+                        <div class="p-6 pb-0">
+                            <div class="flex items-center mb-6">
+                                <button onclick="state.view='home'; render()" class="p-2 mr-4 bg-slate-100 rounded-xl hover:bg-slate-200"><i data-lucide="chevron-left"></i></button>
+                                <h2 class="text-xl font-bold text-slate-800">${isCustom ? '自定义词语' : '选择听写内容'}</h2>
+                            </div>
                         </div>
                         
+                        <div class="flex-1 overflow-y-auto px-6 pb-10 custom-scrollbar">
                         ${isCustom ? `
                             <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-6 text-sm text-blue-600">上传包含词语的 .txt 或 .csv 文件，系统将自动提取。</div>
                             <input type="file" id="filePicker" onchange="handleFileUpload(event)" class="hidden" accept=".txt,.csv">
@@ -183,51 +246,64 @@
                                 <i data-lucide="upload" class="mb-2"></i><span>上传列表文件</span>
                             </button>
                             ${state.customWords.length > 0 ? `
-                                <div class="flex-1 overflow-hidden flex flex-col">
-                                    <div class="flex flex-wrap gap-2 mb-6 overflow-y-auto max-h-[30vh] p-2">
-                                        ${state.customWords.map(w => `<span class="bg-white px-3 py-1 border rounded-lg font-bold shadow-sm text-slate-700">${w.word}</span>`).join('')}
-                                    </div>
-                                    <button onclick="showPreview(null, true)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl mt-auto shadow-lg">下一步</button>
+                                <div class="flex flex-wrap gap-2 mb-6">
+                                    ${state.customWords.map(w => `<span class="bg-white px-3 py-1 border rounded-lg font-bold shadow-sm text-slate-700">${w.word}</span>`).join('')}
                                 </div>
+                                <button onclick="showPreview(null, true)" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg">下一步</button>
                             ` : ''}
                         ` : `
                             <div class="flex flex-col space-y-4">
-                                ${LESSONS.map(lesson => `
-                                    <button onclick="showPreview('${lesson}')" class="w-full p-6 text-left rounded-2xl border-2 border-red-100 bg-white hover:border-red-500 transition-all shadow-sm">
-                                        <div class="text-lg font-black text-red-600 leading-tight">${lesson}</div>
-                                        <div class="text-slate-400 text-sm mt-1">${SYLLABUS[lesson].length} 个词语</div>
+                                ${LESSONS.map(lesson => {
+                                    const meta = LESSON_METADATA[lesson] || { date: '-' };
+                                    return `
+                                    <button onclick="showPreview('${lesson}')" class="w-full p-5 text-left rounded-2xl border-2 border-red-100 bg-white hover:border-red-500 transition-all shadow-sm group">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <div class="text-lg font-black text-red-600 leading-tight group-hover:text-red-700">${lesson}</div>
+                                            <div class="text-xs font-bold px-2 py-1 bg-slate-50 text-slate-400 rounded-lg border border-slate-100">${meta.date}</div>
+                                        </div>
+                                        <div class="text-slate-400 text-sm">
+                                            ${SYLLABUS[lesson].length - 1} 个词语 · 1 个默写
+                                        </div>
                                     </button>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         `}
+                        </div>
                     </div>
                 `;
             } else if (state.view === 'preview') {
                 const words = state.selectedLevel === "自定义" ? state.customWords : (SYLLABUS[state.selectedLevel] || []);
+                const meta = LESSON_METADATA[state.selectedLevel] || { date: '' };
                 html = `
-                    <div class="p-6 pb-24 flex flex-col min-h-screen animate-in fade-in">
-                        <div class="flex items-center mb-8">
-                            <button onclick="state.view='${state.selectedLevel === "自定义" ? "custom-upload" : "level-select"}'; render()" class="p-2 mr-4 bg-slate-100 rounded-xl hover:bg-slate-200"><i data-lucide="chevron-left"></i></button>
-                            <h2 class="text-2xl font-bold text-slate-800">词语预览</h2>
+                    <div class="flex flex-col h-full animate-in fade-in">
+                        <div class="p-6 pb-0">
+                            <div class="flex items-center mb-6">
+                                <button onclick="state.view='${state.selectedLevel === "自定义" ? "custom-upload" : "level-select"}'; render()" class="p-2 mr-4 bg-slate-100 rounded-xl hover:bg-slate-200"><i data-lucide="chevron-left"></i></button>
+                                <h2 class="text-xl font-bold text-slate-800">词语预览</h2>
+                            </div>
+
+                            <div class="mb-6">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <div class="text-xs font-bold text-red-500 uppercase tracking-widest">正在准备</div>
+                                    ${meta.date ? `<div class="text-[10px] font-black text-slate-300 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">${meta.date}</div>` : ''}
+                                </div>
+                                <h3 class="text-2xl font-black text-slate-800 leading-tight">${state.selectedLevel}</h3>
+                            </div>
+
+                            <div class="bg-slate-100 p-1 rounded-2xl flex items-center mb-6">
+                                <button onclick="state.isShuffle=false; render()" class="flex-1 py-2.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${!state.isShuffle ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}">
+                                    <i data-lucide="list-ordered" class="w-4 h-4"></i>
+                                    <span>顺序</span>
+                                </button>
+                                <button onclick="state.isShuffle=true; render()" class="flex-1 py-2.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${state.isShuffle ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}">
+                                    <i data-lucide="shuffle" class="w-4 h-4"></i>
+                                    <span>随机</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="mb-6">
-                            <div class="text-sm font-bold text-red-500 uppercase tracking-widest mb-1">正在准备</div>
-                            <h3 class="text-3xl font-black text-slate-800 leading-tight">${state.selectedLevel}</h3>
-                        </div>
-
-                        <div class="bg-slate-100 p-1.5 rounded-2xl flex items-center mb-6">
-                            <button onclick="state.isShuffle=false; render()" class="flex-1 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${!state.isShuffle ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}">
-                                <i data-lucide="list-ordered" class="w-4 h-4"></i>
-                                <span>顺序</span>
-                            </button>
-                            <button onclick="state.isShuffle=true; render()" class="flex-1 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${state.isShuffle ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}">
-                                <i data-lucide="shuffle" class="w-4 h-4"></i>
-                                <span>随机</span>
-                            </button>
-                        </div>
-
-                        <div class="flex-1 bg-white rounded-3xl border border-slate-100 p-6 shadow-inner mb-6 overflow-y-auto custom-scrollbar">
+                        <div class="flex-1 overflow-y-auto px-6 mb-6 custom-scrollbar">
                             <div class="flex flex-col space-y-3">
                                 ${words.map(w => `
                                     <div class="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 text-lg font-bold text-slate-700 leading-relaxed text-left">
@@ -237,9 +313,11 @@
                             </div>
                         </div>
 
-                        <button onclick="startDictation()" class="w-full bg-red-500 text-white font-black py-5 rounded-2xl text-xl shadow-xl hover:bg-red-600 transition-all active:scale-[0.98]">
-                            确认开始听写
-                        </button>
+                        <div class="p-6 pt-0 mt-auto">
+                            <button onclick="startDictation()" class="w-full bg-red-500 text-white font-black py-4 rounded-2xl text-xl shadow-xl hover:bg-red-600 transition-all active:scale-[0.98]">
+                                确认开始听写
+                            </button>
+                        </div>
                     </div>
                 `;
             } else if (state.view === 'dictation') {
@@ -248,30 +326,58 @@
                 const isLastWord = state.currentWordIndex === state.sessionWords.length - 1;
                 const buttonText = isLastWord ? "写完了，看答案" : "写好了，下一个";
                 
-                html = `
-                    <div class="flex flex-col min-h-screen bg-slate-50">
-                        <div class="p-4 bg-white flex justify-between items-center shadow-sm">
-                            <button onclick="state.view='home'; render()"><i data-lucide="x-circle" class="text-slate-300"></i></button>
-                            <div class="text-center px-4 overflow-hidden">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[150px]">${state.selectedLevel}</p>
-                                <p class="text-sm font-black text-slate-800">${state.currentWordIndex + 1} / ${state.sessionWords.length}</p>
-                            </div>
-                            <div class="w-6"></div>
-                        </div>
-                        <div class="w-full h-1.5 bg-slate-100"><div class="h-full bg-red-500 transition-all duration-300" style="width: ${progress}%"></div></div>
-                        <div class="flex-1 flex flex-col items-center justify-center p-6 space-y-12">
-                            <div onclick="speak('${word.word}')" class="w-40 h-40 rounded-full bg-red-100 flex items-center justify-center cursor-pointer shadow-inner transition-all active:scale-95 ${state.isSpeaking ? 'ring-8 ring-red-50' : ''}">
-                                <i data-lucide="volume-2" class="text-red-500 w-16 h-16"></i>
+                let topHeading = state.selectedLevel;
+                let centerUI = "";
+
+                if (isLastWord && state.selectedLevel !== "自定义") {
+                    topHeading = "请写下默写";
+                    centerUI = `
+                        <div class="flex flex-col items-center space-y-8 animate-in zoom-in duration-500">
+                            <div class="bg-white w-full max-w-[260px] aspect-square border-4 border-dashed border-slate-100 rounded-[48px] shadow-inner flex items-center justify-center">
+                                <i data-lucide="pen-tool" class="text-slate-100 w-24 h-24"></i>
                             </div>
                             <div class="space-y-4 text-center">
-                                <button onclick="speak('${word.word}')" class="px-8 py-3 bg-white border rounded-full shadow-sm flex items-center space-x-2 font-bold text-slate-600 hover:bg-slate-50 mx-auto">
-                                    <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>重读</span>
+                                <button onclick="speakRecitationHint()" class="px-8 py-3 bg-red-100 border border-red-200 text-red-600 font-bold rounded-full shadow-sm flex items-center space-x-2 mx-auto active:scale-95 transition-transform">
+                                    <i data-lucide="play-circle" class="w-5 h-5"></i><span>听开头提示</span>
                                 </button>
-                                <p class="text-slate-400 text-sm font-medium">请在纸上默写词语或句子</p>
+                                <div class="px-6">
+                                    <p class="text-slate-500 font-black text-xl mb-1">开始默写</p>
+                                    <p class="text-slate-400 text-sm font-medium">请根据语音提示词，在纸上默写全句</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="p-6 bg-white border-t">
-                            <button onclick="nextWord()" class="w-full bg-slate-800 text-white font-bold py-5 rounded-2xl text-lg hover:bg-slate-900 shadow-xl">
+                    `;
+                } else {
+                    centerUI = `
+                        <div onclick="speak('${word.word}')" class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-red-100 flex items-center justify-center cursor-pointer shadow-inner transition-all active:scale-95 ${state.isSpeaking ? 'ring-8 ring-red-50' : ''}">
+                            <i data-lucide="volume-2" class="text-red-500 w-12 h-12 md:w-16 md:h-16"></i>
+                        </div>
+                        <div class="space-y-4 text-center">
+                            <button onclick="speak('${word.word}')" class="px-8 py-3 bg-white border rounded-full shadow-sm flex items-center space-x-2 font-bold text-slate-600 hover:bg-slate-50 mx-auto">
+                                <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>重读</span>
+                            </button>
+                            <p class="text-slate-400 text-sm font-medium">请在纸上默写词语或句子</p>
+                        </div>
+                    `;
+                }
+                
+                html = `
+                    <div class="flex flex-col h-full bg-slate-50 animate-in fade-in">
+                        <div class="p-4 bg-white flex justify-between items-center shadow-sm z-10">
+                            <button onclick="state.view='home'; render()" class="p-1"><i data-lucide="x-circle" class="text-slate-300"></i></button>
+                            <div class="text-center px-4 overflow-hidden flex-1">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">${topHeading}</p>
+                                <p class="text-sm font-black text-slate-800">${state.currentWordIndex + 1} / ${state.sessionWords.length}</p>
+                            </div>
+                            <div class="w-8"></div>
+                        </div>
+                        <div class="w-full h-1 bg-slate-100"><div class="h-full bg-red-500 transition-all duration-300" style="width: ${progress}%"></div></div>
+                        
+                        <div class="flex-1 flex flex-col items-center justify-center p-6">
+                            ${centerUI}
+                        </div>
+                        <div class="p-6 bg-white border-t mt-auto">
+                            <button onclick="nextWord()" class="w-full bg-slate-800 text-white font-bold py-5 rounded-2xl text-lg hover:bg-slate-900 shadow-xl active:scale-[0.98]">
                                 ${buttonText}
                             </button>
                         </div>
@@ -279,25 +385,32 @@
                 `;
             } else if (state.view === 'summary') {
                 html = `
-                    <div class="p-6 flex flex-col items-center min-h-screen bg-white">
-                        <div class="mt-12 mb-8 text-center">
-                            <div class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6 mx-auto">
-                                <i data-lucide="check-circle-2" class="text-green-500 w-12 h-12"></i>
+                    <div class="flex flex-col h-full bg-white animate-in fade-in">
+                        <div class="p-6 pb-0 flex flex-col items-center">
+                            <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4 mx-auto">
+                                <i data-lucide="check-circle-2" class="text-green-500 w-10 h-10"></i>
                             </div>
-                            <h2 class="text-3xl font-black text-slate-800">听写完成!</h2>
-                            <p class="text-slate-400 mt-2">请对照纸上作业核对答案</p>
+                            <h2 class="text-2xl font-black text-slate-800">听写完成!</h2>
+                            <p class="text-slate-400 text-sm mt-1">请对照纸上作业核对答案</p>
                         </div>
-                        <div class="w-full space-y-3 mb-10 overflow-y-auto max-h-[45vh] pr-2 custom-scrollbar">
+
+                        <div class="flex-1 overflow-y-auto px-6 my-6 custom-scrollbar">
+                            <div class="space-y-3">
                             ${state.sessionWords.map((item, idx) => `
-                                <div class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span class="font-bold text-slate-800 text-lg leading-relaxed text-left flex-1 mr-4">${item.word}</span>
+                                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 ${idx === state.sessionWords.length - 1 ? 'border-l-4 border-l-red-500 bg-red-50/30' : ''}">
+                                    <div class="flex flex-col text-left flex-1 mr-4">
+                                        ${idx === state.sessionWords.length - 1 ? '<span class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">默写句子</span>' : ''}
+                                        <span class="font-bold text-slate-800 text-lg leading-relaxed">${item.word}</span>
+                                    </div>
                                     <span class="text-slate-300 font-bold">#${idx + 1}</span>
                                 </div>
                             `).join('')}
+                            </div>
                         </div>
-                        <div class="w-full space-y-4 mt-auto pb-6">
-                            <button onclick="state.view='preview'; render()" class="w-full bg-red-500 text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-red-600">再练一次</button>
-                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-5 rounded-2xl hover:bg-slate-200">返回主页</button>
+
+                        <div class="p-6 pt-0 mt-auto flex flex-col space-y-3">
+                            <button onclick="state.view='preview'; render()" class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-red-600">再练一次</button>
+                            <button onclick="state.view='home'; render()" class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200">返回主页</button>
                         </div>
                     </div>
                 `;
