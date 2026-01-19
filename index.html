@@ -87,7 +87,7 @@
                 { word: "比赛虽然看起来简单，但要做到齐心协力，互相配合，还真不容易啊！" },
                 { word: "我打开饭盒，不管三七二十一，狼吞虎咽地吃了起来，不一会儿，就把饭菜都吃完了。" }
             ],
-                "听写（一）到户外去": [
+                "听写（三）到户外去": [
                 { word: "野外露营" },
                 { word: "集合地点" },
                 { word: "一双袜子" },
@@ -250,6 +250,7 @@
             
             // Process text to read punctuation marks aloud AND trigger pauses AFTER they are read.
             const processedText = text
+                .replace(/，/g, ' 逗号，，')
                 .replace(/，/g, ' 逗号，，')
                 .replace(/。/g, ' 句号。。');
             
