@@ -343,6 +343,35 @@
             });
         }
 
+        function getSpeechText(text) {
+            if (!text) return "";
+            let processed = text;
+            
+            // Map of specific word replacements to fix common polyphone issues in speech synthesis
+            const replacements = [
+                // "还" as "hái" (still/also) vs "huán" (return)
+                { pattern: /还(要|是|有|真|玩|留|给|能|会|好|算|想|在|未|没)/g, replacement: "孩$1" },
+                // "得" as structural particle "de" after verbs/adjectives
+                { pattern: /([跑走吃写读看听洗做打玩摔绑记说拿冷热痛快慢高矮胖瘦多小好坏脏累气])得/g, replacement: "$1的" },
+                // "觉得" as "jué de"
+                { pattern: /觉得/g, replacement: "觉的" },
+                // "似的" as "shì de"
+                { pattern: /似的/g, replacement: "是的" },
+                // "三更半夜" -> "三庚半夜" (gēng)
+                { pattern: /三更/g, replacement: "三庚" },
+                // "一" tone sandhi: followed by 4th tone character -> pronounced 2nd tone "yí" (use "仪")
+                { pattern: /一(个|片|次|顿|面|样|阵|会|栋|趟|届|块|句|段|步|份|对|动|共|定|切|溜|下|去|路|宿|半|派|套|岁|处|万)/g, replacement: "仪$1" },
+                // "一" tone sandhi: followed by 1st, 2nd, or 3rd tone character -> pronounced 4th tone "yì" (use "意")
+                { pattern: /一(双|只|支|张|条|本|把|杯|兜|头|般|帮|批|些|千|百|天|年|家|起|直|边|生|声|心|听|提|摸|回|身|同)/g, replacement: "意$1" }
+            ];
+            
+            for (const r of replacements) {
+                processed = processed.replace(r.pattern, r.replacement);
+            }
+            
+            return processed;
+        }
+
         async function speak(text, isHint = false) {
             if (!text) return;
             window.speechSynthesis.cancel();
@@ -363,18 +392,20 @@
                 
                 for (let i = 0; i < phrases.length; i++) {
                     const phrase = phrases[i];
+                    // Convert phrase into spoken pronunciation guide
+                    const spokenPhrase = getSpeechText(phrase);
                     
                     for (let j = 0; j < 3; j++) {
                         if (currentSpeakId !== speakId) return;
                         
-                        await speakPhraseAsync(phrase);
+                        await speakPhraseAsync(spokenPhrase);
                         
                         if (currentSpeakId !== speakId) return;
                         
                         const isLastPhrase = i === phrases.length - 1;
                         const isLastRepeat = j === 2;
                         if (!(isLastPhrase && isLastRepeat)) {
-                            // Dynamically calculate pause time based on the phrase length
+                            // Dynamically calculate pause time based on the original phrase length
                             const pauseTime = Math.max(
                                 DICTATION_MIN_PAUSE_MS, 
                                 DICTATION_PAUSE_BASE_MS + phrase.length * DICTATION_PAUSE_PER_CHAR_MS
