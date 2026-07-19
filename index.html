@@ -257,6 +257,40 @@
         const DICTATION_PAUSE_PER_CHAR_MS = 800;    // Additional pause time per character (e.g. 0.8 seconds per Chinese character)
         const DICTATION_MIN_PAUSE_MS = 3000;        // Minimum pause time in milliseconds
 
+        // Configurable speech engine settings (to make the voice sound as human/natural as possible)
+        const DICTATION_SPEECH_RATE = 0.8;          // Speed rate (0.1 to 10. Default is 1.0; 0.8 is slower for clear writing)
+        const DICTATION_SPEECH_PITCH = 1.0;         // Pitch (0 to 2. Default is 1.0)
+
+        function getBestChineseVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            const cnVoices = voices.filter(v => {
+                const l = v.lang.toLowerCase().replace('_', '-');
+                return l.startsWith('zh-cn') || l === 'zh';
+            });
+            
+            if (cnVoices.length === 0) {
+                return voices.find(v => v.lang.toLowerCase().startsWith('zh')) || null;
+            }
+            
+            // Prioritize Siri (macOS/iOS high-quality natural voices)
+            const siri = cnVoices.find(v => v.name.includes('Siri'));
+            if (siri) return siri;
+            
+            // Prioritize Enhanced / Premium / Natural voices (if downloaded on macOS/Windows/Chrome)
+            const enhanced = cnVoices.find(v => 
+                v.name.toLowerCase().includes('enhanced') || 
+                v.name.toLowerCase().includes('premium') || 
+                v.name.toLowerCase().includes('natural')
+            );
+            if (enhanced) return enhanced;
+            
+            // Prioritize standard Tingting (mainland standard pronunciation)
+            const tingting = cnVoices.find(v => v.name.toLowerCase().includes('tingting') || v.name.toLowerCase().includes('ting-ting'));
+            if (tingting) return tingting;
+            
+            return cnVoices[0];
+        }
+
         function splitIntoPhrases(text) {
             if (!text) return [];
             return text.split(/[，。！？；,\.!\?;\n]+/)
@@ -268,7 +302,14 @@
             return new Promise((resolve) => {
                 const utterance = new SpeechSynthesisUtterance(phrase);
                 utterance.lang = 'zh-CN';
-                utterance.rate = 0.8;
+                utterance.rate = DICTATION_SPEECH_RATE;
+                utterance.pitch = DICTATION_SPEECH_PITCH;
+                
+                // Set the highest quality Chinese voice available on this system
+                const bestVoice = getBestChineseVoice();
+                if (bestVoice) {
+                    utterance.voice = bestVoice;
+                }
                 
                 activeUtterances.push(utterance);
                 
